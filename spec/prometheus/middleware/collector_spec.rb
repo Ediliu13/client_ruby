@@ -26,7 +26,7 @@ describe Prometheus::Middleware::Collector do
   end
 
   it 'handles errors in the registry gracefully' do
-    counter = registry.get(:http_server_requests_total)
+    counter = registry.get(:service_requests_total)
     expect(counter).to receive(:increment).and_raise(NoMethodError)
 
     get '/foo'
@@ -39,11 +39,11 @@ describe Prometheus::Middleware::Collector do
 
     get '/foo'
 
-    metric = :http_server_requests_total
+    metric = :service_requests_total
     labels = { method: 'get', path: '/foo', code: '200' }
     expect(registry.get(metric).get(labels)).to eql(1.0)
 
-    metric = :http_server_request_duration_seconds
+    metric = :service_latency_seconds
     labels = { method: 'get', path: '/foo' }
     expect(registry.get(metric).get(labels)).to include(0.1 => 0, 0.25 => 1)
   end
@@ -53,11 +53,11 @@ describe Prometheus::Middleware::Collector do
 
     get '/foo/42/bars'
 
-    metric = :http_server_requests_total
+    metric = :service_requests_total
     labels = { method: 'get', path: '/foo/:id/bars', code: '200' }
     expect(registry.get(metric).get(labels)).to eql(1.0)
 
-    metric = :http_server_request_duration_seconds
+    metric = :service_latency_seconds
     labels = { method: 'get', path: '/foo/:id/bars' }
     expect(registry.get(metric).get(labels)).to include(0.1 => 0, 0.5 => 1)
   end
@@ -67,11 +67,11 @@ describe Prometheus::Middleware::Collector do
 
     get '/foo/5180349d-a491-4d73-af30-4194a46bdff3/bars'
 
-    metric = :http_server_requests_total
+    metric = :service_requests_total
     labels = { method: 'get', path: '/foo/:uuid/bars', code: '200' }
     expect(registry.get(metric).get(labels)).to eql(1.0)
 
-    metric = :http_server_request_duration_seconds
+    metric = :service_latency_seconds
     labels = { method: 'get', path: '/foo/:uuid/bars' }
     expect(registry.get(metric).get(labels)).to include(0.1 => 0, 0.5 => 1)
   end
@@ -92,7 +92,7 @@ describe Prometheus::Middleware::Collector do
     it 'traces exceptions' do
       expect { get '/broken' }.to raise_error NoMethodError
 
-      metric = :http_server_exceptions_total
+      metric = :service_exceptions_total
       labels = { exception: 'NoMethodError' }
       expect(registry.get(metric).get(labels)).to eql(1.0)
     end
@@ -115,7 +115,7 @@ describe Prometheus::Middleware::Collector do
     it 'allows labels configuration' do
       get '/foo/bar'
 
-      metric = :http_server_requests_total
+      metric = :service_requests_total
       labels = { method: 'get', code: '200' }
       expect(registry.get(metric).get(labels)).to eql(1.0)
     end
@@ -135,7 +135,7 @@ describe Prometheus::Middleware::Collector do
         registry.get(:lolrus_requests_total),
       ).to be_a(Prometheus::Client::Counter)
       expect(
-        registry.get(:lolrus_request_duration_seconds),
+        registry.get(:lolrus_latency_seconds),
       ).to be_a(Prometheus::Client::Histogram)
       expect(
         registry.get(:lolrus_exceptions_total),
@@ -143,9 +143,9 @@ describe Prometheus::Middleware::Collector do
     end
 
     it "doesn't register the default metrics" do
-      expect(registry.get(:http_server_requests_total)).to be(nil)
-      expect(registry.get(:http_server_request_duration_seconds)).to be(nil)
-      expect(registry.get(:http_server_exceptions_total)).to be(nil)
+      expect(registry.get(:service_requests_total)).to be(nil)
+      expect(registry.get(:service_latency_seconds)).to be(nil)
+      expect(registry.get(:service_exceptions_total)).to be(nil)
     end
   end
 end
